@@ -8,6 +8,8 @@ import React, {
 
 import AsyncStorage from '@react-native-community/async-storage';
 
+const STORAGE_KEY = '@products';
+
 interface Product {
   id: string;
   title: string;
@@ -30,23 +32,74 @@ const CartProvider: React.FC = ({ children }) => {
 
   useEffect(() => {
     async function loadProducts(): Promise<void> {
-      // TODO LOAD ITEMS FROM ASYNC STORAGE
+      try {
+        const storedValues = await AsyncStorage.getItem(STORAGE_KEY);
+        setProducts(
+          storedValues !== null ? JSON.parse(storedValues) : ([] as Product[]),
+        );
+      } catch (e) {
+        console.error(e);
+      }
     }
 
     loadProducts();
   }, []);
 
-  const addToCart = useCallback(async product => {
-    // TODO ADD A NEW ITEM TO THE CART
-  }, []);
+  const increment = useCallback(
+    async id => {
+      const index = products.findIndex(previous => previous.id === id);
+      const newProducts = [...products];
+      newProducts[index].quantity += 1;
 
-  const increment = useCallback(async id => {
-    // TODO INCREMENTS A PRODUCT QUANTITY IN THE CART
-  }, []);
+      try {
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newProducts));
+        setProducts(newProducts);
+      } catch (e) {
+        console.error(e);
+      }
+    },
+    [products],
+  );
 
-  const decrement = useCallback(async id => {
-    // TODO DECREMENTS A PRODUCT QUANTITY IN THE CART
-  }, []);
+  const decrement = useCallback(
+    async id => {
+      const index = products.findIndex(previous => previous.id === id);
+      const newProducts = [...products];
+      if (newProducts[index].quantity - 1 <= 0) {
+        newProducts.splice(index, 1);
+      } else {
+        newProducts[index].quantity -= 1;
+      }
+
+      try {
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newProducts));
+        setProducts(newProducts);
+      } catch (e) {
+        console.error(e);
+      }
+    },
+    [products],
+  );
+
+  const addToCart = useCallback(
+    async (product: Product) => {
+      const index = products.findIndex(previous => previous.id === product.id);
+      const newProducts = [...products];
+      if (index !== -1) {
+        newProducts[index].quantity += 1;
+      } else {
+        newProducts.push({ ...product, quantity: 1 });
+      }
+
+      try {
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newProducts));
+        setProducts(newProducts);
+      } catch (e) {
+        console.error(e);
+      }
+    },
+    [products],
+  );
 
   const value = React.useMemo(
     () => ({ addToCart, increment, decrement, products }),
